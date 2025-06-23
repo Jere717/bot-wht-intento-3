@@ -36,7 +36,7 @@ client.on('ready', () => {
 
 client.initialize();
 
-const ID_DE_TU_GOOGLE_SHEET = process.env.GOOGLE_SHEET_ID || '1jjROnAY1TobjiDYwjHv8YD2i-D_LlwTtw79XZ1i-1Oo';
+const ID_DE_TU_GOOGLE_SHEET = process.env.GOOGLE_SHEET_ID || '1jhRS6X7EPfZLV6BZwi_nWxEEyUgbIty85psDwcIlRxA';
 const creds = process.env.GOOGLE_CREDENTIALS ? JSON.parse(process.env.GOOGLE_CREDENTIALS) : null;
 
 // --- 3. ENDPOINT PARA GOOGLE APPS SCRIPT ---

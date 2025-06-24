@@ -1,9 +1,10 @@
-const express = require('express');
-const cors = require('cors');
-const qrcode = require('qrcode');
-const { Client, LocalAuth } = require('whatsapp-web.js');
-const { MistralClient } = require('@mistralai/mistralai');
-require('dotenv').config();
+import express from 'express';
+import cors from 'cors';
+import qrcode from 'qrcode';
+import { Client, LocalAuth } from 'whatsapp-web.js';
+import { MistralClient } from '@mistralai/mistralai';
+import dotenv from 'dotenv';
+dotenv.config();
 
 const app = express();
 app.use(cors());

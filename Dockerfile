@@ -1,6 +1,6 @@
-FROM node:20
+FROM node:18-slim
 
-# Instala dependencias necesarias para Puppeteer/Chromium
+# Instalar dependencias necesarias para Puppeteer/Chromium
 RUN apt-get update && apt-get install -y \
   wget \
   ca-certificates \
@@ -30,9 +30,18 @@ RUN apt-get update && apt-get install -y \
   libwayland-cursor0 \
   libwayland-egl1 \
   libxkbcommon0 \
-  --no-install-recommends
+  --no-install-recommends \
+  && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
-COPY . .
+
+COPY package*.json ./
 RUN npm install
+
+COPY . .
+
+RUN mkdir -p /app/sessions
+
+EXPOSE 3000
+
 CMD ["node", "server.js"]

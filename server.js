@@ -1,98 +1,88 @@
-// --- 1. IMPORTAR HERRAMIENTAS ---
 const express = require('express');
 const cors = require('cors');
 const qrcode = require('qrcode');
 const { Client, LocalAuth } = require('whatsapp-web.js');
-const { GoogleSpreadsheet } = require('google-spreadsheet');
-const MistralClient = require('@mistralai/mistralai');
+const { MistralClient } = require('@mistralai/mistralai');
+require('dotenv').config();
 
-// --- 2. CONFIGURACIÓN INICIAL ---
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-let qrData = null;
-let isConnected = false;
+const sessions = {};
+const mistral = new MistralClient({ apiKey: process.env.MISTRAL_API_KEY });
 
-const client = new Client({
-  authStrategy: new LocalAuth({ dataPath: './session' }),
-  puppeteer: {
-    headless: true,
-    args: ['--no-sandbox', '--disable-setuid-sandbox']
-  }
-});
+function createSession(sessionId) {
+  if (sessions[sessionId]) return sessions[sessionId];
 
-client.on('qr', async (qr) => {
-  qrData = await qrcode.toDataURL(qr);
-  isConnected = false;
-  console.log('QR generado y listo para escanear.');
-});
+  const client = new Client({
+    authStrategy: new LocalAuth({ dataPath: `./sessions/${sessionId}` }),
+    puppeteer: {
+      headless: true,
+      args: ['--no-sandbox', '--disable-setuid-sandbox']
+    }
+  });
 
-client.on('ready', () => {
-  console.log('✅ ¡Cliente de WhatsApp conectado y listo!');
-  qrData = null;
-  isConnected = true;
-});
+  sessions[sessionId] = {
+    client,
+    qr: null,
+    connected: false
+  };
 
-client.initialize();
+  client.on('qr', async (qr) => {
+    const base64 = await qrcode.toDataURL(qr);
+    sessions[sessionId].qr = base64;
+    sessions[sessionId].connected = false;
+    console.log(`🔐 QR generado para sesión ${sessionId}`);
+  });
 
-const ID_DE_TU_GOOGLE_SHEET = process.env.GOOGLE_SHEET_ID || '1jhRS6X7EPfZLV6BZwi_nWxEEyUgbIty85psDwcIlRxA';
-const creds = process.env.GOOGLE_CREDENTIALS ? JSON.parse(process.env.GOOGLE_CREDENTIALS) : null;
+  client.on('ready', () => {
+    sessions[sessionId].qr = null;
+    sessions[sessionId].connected = true;
+    console.log(`✅ Sesión ${sessionId} conectada`);
+  });
 
-// --- 3. ENDPOINT PARA GOOGLE APPS SCRIPT ---
-app.post('/getqr', (req, res) => {
-  if (qrData) {
-    res.json({ qr: qrData, status: 'Esperando escaneo' });
-  } else if (isConnected) {
-    res.json({ status: 'CONECTADO' });
-  } else {
-    res.json({ status: 'NO CONECTADO' });
-  }
-});
+  client.on('message', async msg => {
+    const text = msg.body?.trim();
+    if (!text) return;
+    const reply = await handleIA(text);
+    msg.reply(reply);
+  });
 
-// --- ENDPOINT PARA PROCESAR MENSAJES DESDE APPS SCRIPT ---
-app.post('/registermessage', async (req, res) => {
+  client.initialize();
+}
+
+async function handleIA(texto) {
   try {
-    const { mensaje, numero } = req.body;
-    if (!mensaje || !numero) {
-      return res.status(400).json({ error: 'Faltan parámetros: mensaje y numero' });
-    }
-    // --- Conexión con Google Sheets ---
-    const doc = new GoogleSpreadsheet(ID_DE_TU_GOOGLE_SHEET, {
-      apiKey: null,
-      access_token: null,
-      service_account_auth: creds
+    const chat = await mistral.chat({
+      model: 'mistral-small',
+      messages: [{ role: 'user', content: texto }]
     });
-    await doc.loadInfo();
-    const configSheet = doc.sheetsByTitle['Configuracion'];
-    await configSheet.loadCells('B9:D8');
-    const mistralApiKey = configSheet.getCellByA1('D8').value;
-    const botPrompt = configSheet.getCellByA1('B9').value;
-    if (!mistralApiKey || !botPrompt) {
-      return res.status(500).json({ error: 'No se encontró la API Key de Mistral o el Prompt en la hoja de configuración.' });
-    }
-    // --- Conexión con Mistral AI ---
-    const mistralClient = new MistralClient(mistralApiKey);
-    const chatResponse = await mistralClient.chat({
-      model: 'mistral-large-latest',
-      messages: [{ role: 'user', content: `${botPrompt}\n\nCliente: ${mensaje}` }],
-    });
-    const aiResponse = chatResponse.choices[0].message.content;
-    // --- Guardar en la hoja de 'Solicitudes' ---
-    const requestsSheet = doc.sheetsByTitle['Solicitudes'];
-    await requestsSheet.addRow({
-      Fecha: new Date().toLocaleString(),
-      Usuario: numero,
-      Mensaje: mensaje,
-      Respuesta_IA: aiResponse
-    });
-    // --- Responder al Apps Script ---
-    res.json({ respuesta: aiResponse });
-  } catch (error) {
-    console.error('Error procesando mensaje:', error);
-    res.status(500).json({ error: 'Error procesando el mensaje.' });
+    return chat.choices?.[0]?.message?.content || "🤖 No entendí, intentá de nuevo.";
+  } catch (e) {
+    console.error("Mistral error:", e.message);
+    return "⚠️ Error al usar la IA.";
+  }
+}
+
+// Endpoint de QR (usado por Apps Script)
+app.post('/getqr', (req, res) => {
+  const sessionId = req.body.sheet_id;
+  if (!sessionId) {
+    return res.status(400).json({ status: "-1", message: "Falta el ID del spreadsheet (sheet_id)." });
+  }
+
+  createSession(sessionId);
+
+  const s = sessions[sessionId];
+  if (s.connected) {
+    return res.json({ status: "0", message: "CONECTADO" });
+  } else if (s.qr) {
+    return res.json({ status: "0", message: "Esperando escaneo", qr: encodeURIComponent(s.qr) });
+  } else {
+    return res.json({ status: "-1", message: "Inicializando sesión. Intenta nuevamente en unos segundos." });
   }
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Servidor escuchando en puerto ${PORT}`));
+app.listen(PORT, () => console.log(`🚀 Servidor activo en puerto ${PORT}`));

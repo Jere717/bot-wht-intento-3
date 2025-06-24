@@ -25,8 +25,8 @@ function createSession(sessionId) {
 
   const client = new Client({
     authStrategy: new LocalAuth({ dataPath: `./sessions/${sessionId}` }),
-    puppeteer: {
-      headless: false,
+      puppeteer: {
+      headless: 'new',
       args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
@@ -35,7 +35,7 @@ function createSession(sessionId) {
         '--disable-gpu',
         '--window-size=1920x1080'
       ]
-    }
+      }
   });
 
   sessions[sessionId] = {

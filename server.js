@@ -5,6 +5,7 @@ import pkg from 'whatsapp-web.js';
 const { Client, LocalAuth } = pkg;
 import MistralClient from '@mistralai/mistralai';
 import dotenv from 'dotenv';
+import fs from 'fs';
 dotenv.config();
 
 const app = express();
@@ -15,13 +16,25 @@ const sessions = {};
 const mistral = new MistralClient({ apiKey: process.env.MISTRAL_API_KEY });
 
 function createSession(sessionId) {
-  if (sessions[sessionId]) return sessions[sessionId];
+  // Limpieza de sesión fallida antes de crearla
+  const sessionPath = `./sessions/${sessionId}`;
+  if (fs.existsSync(sessionPath)) {
+    fs.rmSync(sessionPath, { recursive: true });
+    console.log(`🧹 Sesión eliminada para ${sessionId}`);
+  }
 
   const client = new Client({
     authStrategy: new LocalAuth({ dataPath: `./sessions/${sessionId}` }),
     puppeteer: {
-      headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox']
+      headless: false,
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-accelerated-2d-canvas',
+        '--disable-gpu',
+        '--window-size=1920x1080'
+      ]
     }
   });
 
@@ -84,6 +97,12 @@ app.post('/getqr', (req, res) => {
   } else {
     return res.json({ status: "-1", message: "Inicializando sesión. Intenta nuevamente en unos segundos." });
   }
+});
+
+// Endpoint para verificar el estado de las sesiones
+app.get('/status', (req, res) => {
+  const count = Object.keys(sessions).length;
+  res.json({ status: 'ok', sesiones_activas: count });
 });
 
 const PORT = process.env.PORT || 3000;

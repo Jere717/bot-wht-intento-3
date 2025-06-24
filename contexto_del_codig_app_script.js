@@ -1003,7 +1003,7 @@ function obtenerblacklist() {
   try {
     var sheet_blacklist = excel_qr.getSheetByName("BlackListBOT");
     var itemsblacklist = sheet_blacklist.getRange(2, 1, sheet_blacklist.getLastRow(), sheet_blacklist.getLastColumn()).getValues();
-    return [...new Set(itemsblacklist.map item => item[0]))].toString();
+    return [...new Set(itemsblacklist.map(item => item[0]))].toString();
   } catch (e) {
   }
   return "";

@@ -1,7 +1,8 @@
 import express from 'express';
 import cors from 'cors';
 import qrcode from 'qrcode';
-import { Client, LocalAuth } from 'whatsapp-web.js';
+import pkg from 'whatsapp-web.js';
+const { Client, LocalAuth } = pkg;
 import { MistralClient } from '@mistralai/mistralai';
 import dotenv from 'dotenv';
 dotenv.config();

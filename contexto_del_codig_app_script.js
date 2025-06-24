@@ -1134,3 +1134,38 @@ function doPost(e) {
   }
   return ContentService.createTextOutput(respuesta).setMimeType(ContentService.MimeType.JSON);
 }
+
+function obtenerQRyGuardarConReintentos(reintentos) {
+  var url = "https://comfortable-morganica-tattosedm-99d22847.koyeb.app/getqr";
+  var options = {
+    'method': 'POST',
+    'headers': { 'Content-Type': 'application/json' },
+    'muteHttpExceptions': true,
+    'payload': JSON.stringify({ sheet_id: SpreadsheetApp.getActiveSpreadsheet().getId() })
+  };
+  var response = UrlFetchApp.fetch(url, options);
+  var json = {};
+  try {
+    json = JSON.parse(response.getContentText());
+  } catch (e) {
+    Browser.msgBox("Respuesta inválida del backend: " + response.getContentText());
+    return;
+  }
+  if (json.qr) {
+    var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Configuracion");
+    // Guarda el QR en C2
+    sheet.getRange(2, 3).setValue(json.qr);
+    // Inserta la imagen en la hoja (en C3, por ejemplo)
+    try {
+      sheet.insertImage(decodeURIComponent(json.qr), 3, 4);
+    } catch (e) {
+      // Si falla, solo deja el texto
+    }
+    Browser.msgBox("QR recibido y guardado.");
+  } else if (json.status == "-1" && reintentos > 0) {
+    Utilities.sleep(2500); // Espera 2.5 segundos
+    obtenerQRyGuardarConReintentos(reintentos - 1);
+  } else {
+    Browser.msgBox("Estado: " + json.message);
+  }
+}

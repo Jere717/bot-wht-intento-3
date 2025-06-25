@@ -26,15 +26,15 @@ function createSession(sessionId) {
   const client = new Client({
     authStrategy: new LocalAuth({ dataPath: `./sessions/${sessionId}` }),
       puppeteer: {
-      headless: 'new',
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-accelerated-2d-canvas',
-        '--disable-gpu',
-        '--window-size=1920x1080'
-      ]
+        headless: true,
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-accelerated-2d-canvas',
+          '--disable-gpu',
+          '--window-size=1920x1080'
+        ]
       }
   });
 

@@ -25,17 +25,17 @@ function createSession(sessionId) {
 
   const client = new Client({
     authStrategy: new LocalAuth({ dataPath: `./sessions/${sessionId}` }),
-      puppeteer: {
-        headless: true,
-        args: [
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
-          '--disable-dev-shm-usage',
-          '--disable-accelerated-2d-canvas',
-          '--disable-gpu',
-          '--window-size=1920x1080'
-        ]
-      }
+    puppeteer: {
+      headless: false,
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-accelerated-2d-canvas',
+        '--disable-gpu',
+        '--window-size=1920x1080'
+      ]
+    }
   });
 
   sessions[sessionId] = {
@@ -44,43 +44,17 @@ function createSession(sessionId) {
     connected: false
   };
 
-  // En el evento 'qr' (dentro de createSession)
   client.on('qr', async (qr) => {
     const base64 = await qrcode.toDataURL(qr);
     sessions[sessionId].qr = base64;
     sessions[sessionId].connected = false;
-    
-    // Notificar a GAS vía POST
-    const payload = {
-      op: 'qr',
-      qr: base64
-    };
-    
-    fetch(sessions[sessionId].appScript, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    }).catch(err => console.error('Error notificando a GAS:', err));
+    console.log(`🔐 QR generado para sesión ${sessionId}`);
   });
 
-  // En el evento 'ready' (dentro de createSession)
   client.on('ready', () => {
     sessions[sessionId].qr = null;
     sessions[sessionId].connected = true;
-
-    // Notificar a GAS que la sesión está lista
-    const payload = {
-      op: 'qr',
-      qr: 'CONECTADO',
-      session: sessionId,
-      numero: client.info.wid.user
-    };
-    
-    fetch(sessions[sessionId].appScript, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    }).catch(err => console.error('Error notificando a GAS (ready):', err));
+    console.log(`✅ Sesión ${sessionId} conectada`);
   });
 
   client.on('message', async msg => {

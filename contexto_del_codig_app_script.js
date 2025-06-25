@@ -1003,7 +1003,7 @@ function obtenerblacklist() {
   try {
     var sheet_blacklist = excel_qr.getSheetByName("BlackListBOT");
     var itemsblacklist = sheet_blacklist.getRange(2, 1, sheet_blacklist.getLastRow(), sheet_blacklist.getLastColumn()).getValues();
-    return [...new Set(itemsblacklist.map(item => item[0]))].toString();
+    return [...new Set(itemsblacklist.map item => item[0]))].toString();
   } catch (e) {
   }
   return "";
@@ -1153,11 +1153,11 @@ function obtenerQRyGuardarConReintentos(reintentos) {
   }
   if (json.qr) {
     var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Configuracion");
-    // Guarda el QR en C2
-    sheet.getRange(2, 3).setValue(json.qr);
-    // Inserta la imagen en la hoja (en C3, por ejemplo)
+    // Guarda el QR en B2 (columna 2)
+    sheet.getRange(2, 2).setValue(json.qr);
+    // Inserta la imagen en C2 (columna 3, fila 2)
     try {
-      sheet.insertImage(decodeURIComponent(json.qr), 3, 4);
+      sheet.insertImage(decodeURIComponent(json.qr), 3, 2);
     } catch (e) {
       // Si falla, solo deja el texto
     }

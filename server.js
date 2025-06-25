@@ -44,17 +44,43 @@ function createSession(sessionId) {
     connected: false
   };
 
+  // En el evento 'qr' (dentro de createSession)
   client.on('qr', async (qr) => {
     const base64 = await qrcode.toDataURL(qr);
     sessions[sessionId].qr = base64;
     sessions[sessionId].connected = false;
-    console.log(`🔐 QR generado para sesión ${sessionId}`);
+    
+    // Notificar a GAS vía POST
+    const payload = {
+      op: 'qr',
+      qr: base64
+    };
+    
+    fetch(sessions[sessionId].appScript, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    }).catch(err => console.error('Error notificando a GAS:', err));
   });
 
+  // En el evento 'ready' (dentro de createSession)
   client.on('ready', () => {
     sessions[sessionId].qr = null;
     sessions[sessionId].connected = true;
-    console.log(`✅ Sesión ${sessionId} conectada`);
+
+    // Notificar a GAS que la sesión está lista
+    const payload = {
+      op: 'qr',
+      qr: 'CONECTADO',
+      session: sessionId,
+      numero: client.info.wid.user
+    };
+    
+    fetch(sessions[sessionId].appScript, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    }).catch(err => console.error('Error notificando a GAS (ready):', err));
   });
 
   client.on('message', async msg => {
